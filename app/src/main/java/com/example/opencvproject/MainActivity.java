@@ -1,23 +1,20 @@
 package com.example.opencvproject;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.Manifest;
-import android.content.Intent;
-import android.content.pm.ActivityInfo;
-import android.os.Bundle;
-
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Vector;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
-import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
@@ -26,6 +23,7 @@ import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.imgproc.Imgproc;
 
 import android.app.Activity;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -34,94 +32,223 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.view.View.OnTouchListener;
 import android.view.SurfaceView;
-import android.widget.Toast;
-import com.tbruyelle.rxpermissions2.RxPermissions;
 
-public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
+import static org.opencv.core.Core.inRange;
+import static org.opencv.core.CvType.CV_8UC3;
+import static org.opencv.imgproc.Imgproc.CHAIN_APPROX_NONE;
+import static org.opencv.imgproc.Imgproc.RETR_EXTERNAL;
+import static org.opencv.imgproc.Imgproc.boundingRect;
+import static org.opencv.imgproc.Imgproc.contourArea;
+import static org.opencv.imgproc.Imgproc.dilate;
+import static org.opencv.imgproc.Imgproc.drawContours;
+import static org.opencv.imgproc.Imgproc.erode;
+import static org.opencv.imgproc.Imgproc.findContours;
+import static org.opencv.imgproc.Imgproc.floodFill;
 
-    static{
-        if(!OpenCVLoader.initDebug()){
-            Log.d("TAG", "OpenCV not loaded");
+public class MainActivity extends Activity implements  CvCameraViewListener2 {
+    private static final String  TAG              = "MainActivity";
 
+    private boolean              mIsColorSelected = false;
+    private Mat                  mRgba;
+    private Scalar               mBlobColorRgba;
+    private Scalar               mBlobColorHsv;
+    private ColorBlobDetector    mDetector;
+    private Mat                  mSpectrum;
+    private Size                 SPECTRUM_SIZE;
+    private Scalar               CONTOUR_COLOR;
+    private boolean flag;
+
+    Scalar redLow1;
+    Scalar redHigh1;
+
+    Scalar redLow2 ;
+    Scalar redHigh2 ;
+
+    // Hue Ranges for Blue
+    Scalar blueLow;
+    Scalar blueHigh ;
+
+    // Hue Ranges for Yellow
+    Scalar yellowLow ;
+    Scalar yellowHigh ;
+
+    private CameraBridgeViewBase mOpenCvCameraView;
+
+    private BaseLoaderCallback  mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                {
+                    Log.i(TAG, "OpenCV loaded successfully");
+                    mOpenCvCameraView.enableView();
+                } break;
+                default:
+                {
+                    super.onManagerConnected(status);
+                } break;
+            }
         }
+    };
 
-        else{
-            Log.d("TAG", "OpenCV loaded");
-        }
+    public MainActivity() {
+        Log.i(TAG, "Instantiated new " + this.getClass());
     }
-    int iLowH= 101;
-    int iHighH = 130;
-    int iLowS = 50;
-    int iHighS = 255;
-    int iLowV=70;
-    int iHighV = 255;
 
-    Mat imgHSV, imgThresholded;
-    JavaCameraView cameraView;
-
-
-    Scalar sc1, sc2;
-
+    /** Called when the activity is first created. */
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
+        Log.i(TAG, "called onCreate");
         super.onCreate(savedInstanceState);
-
-        RxPermissions rxPermissions = new RxPermissions(this);
-        rxPermissions
-                .request(Manifest.permission.CAMERA)
-                .subscribe(granted -> {
-                    if (granted) {
-                        // All requested permissions are granted
-                    } else {
-                        Toast.makeText(this, "Permissions Denied. Please Accept the Needed Permissions. ", Toast.LENGTH_LONG).show();
-                        // At least one permission is denied
-                    }
-                });
-
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         setContentView(R.layout.activity_main);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
-        sc1=new Scalar(iLowH, iLowS, iLowV);
-        sc2 = new Scalar(iHighH, iHighS, iHighV);
+        mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.cameraview);
+        mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
+        mOpenCvCameraView.setCvCameraViewListener(this);
+        flag=true;
 
-        cameraView = (JavaCameraView) findViewById(R.id.cameraview);
+        redLow1 = new  Scalar(150, 140, 160);
+        redHigh1 = new  Scalar(180, 255, 255);
 
-        cameraView.setCameraIndex(0); //rear cam
+        redLow2 = new  Scalar(0, 50, 50);
+        redHigh2 = new  Scalar(3, 255, 255);
 
-        cameraView.setCvCameraViewListener(this);
-        cameraView.enableView();
+        // Hue Ranges for Blue
+        blueLow = new  Scalar(100, 150, 100);
+        blueHigh = new  Scalar(128, 255, 255);
 
-
-
-    }
-
-
-    @Override
-    public void onCameraViewStarted(int width, int height) {
-
-        imgHSV = new Mat(width, height, CvType.CV_16UC4);
-        imgThresholded = new Mat(width, height, CvType.CV_16UC4);
-    }
-
-    @Override
-    public void onCameraViewStopped() {
-
+        // Hue Ranges for Yellow
+        yellowLow = new  Scalar(14, 100, 140);
+        yellowHigh = new Scalar(30, 255, 255);
     }
 
     @Override
-    protected void onPause() {
+    public void onPause()
+    {
         super.onPause();
-        cameraView.disableView();
+        if (mOpenCvCameraView != null)
+            mOpenCvCameraView.disableView();
     }
 
     @Override
+    public void onResume()
+    {
+        super.onResume();
+        if (!OpenCVLoader.initDebug()) {
+            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+        } else {
+            Log.d(TAG, "OpenCV library found inside package. Using it!");
+            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
+    }
+
+    public void onDestroy() {
+        super.onDestroy();
+        if (mOpenCvCameraView != null)
+            mOpenCvCameraView.disableView();
+    }
+
+    public void onCameraViewStarted(int width, int height) {
+        mRgba = new Mat(height, width, CvType.CV_8UC4);
+        mDetector = new ColorBlobDetector();
+        mSpectrum = new Mat();
+        mBlobColorRgba = new Scalar(255);
+        mBlobColorHsv = new Scalar(255);
+        SPECTRUM_SIZE = new Size(200, 64);
+        CONTOUR_COLOR = new Scalar(255,255,255,255);
+    }
+
+    public void onCameraViewStopped() {
+        mRgba.release();
+    }
+
+
+
+
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-        Imgproc.cvtColor(inputFrame.rgba(), imgHSV, Imgproc.COLOR_BGR2HSV);
+        if(!flag)
+            return null;
+        mRgba = inputFrame.rgba();
+        Mat hsv = new Mat();
+        Imgproc.cvtColor(inputFrame.rgba(), hsv, Imgproc.COLOR_BGR2HSV);
+
+        Mat		Image= new Mat(),
+                redMask1= new Mat(), redMask2= new Mat(), blueMask= new Mat(), yellowMask= new Mat(), mask= new Mat(),
+                canvas= new Mat();
+
+        canvas.create(mRgba.rows(), mRgba.cols(), CV_8UC3);
+        mRgba.copyTo(canvas);
+
+        // Match for Red
+        Core.inRange(hsv, redLow1, redHigh1, redMask1);
+        Core.inRange(hsv, redLow2, redHigh2, redMask2);
+
+        // Match for Blue
+        Core.inRange(hsv, blueLow, blueHigh, blueMask);
+
+        // Match for Yellow
+        Core.inRange(hsv, yellowLow, yellowHigh, yellowMask);
+
+        //Merged
+        Core.bitwise_or(redMask1, redMask2, mask);
+        Core.bitwise_or(mask, blueMask, mask);
+        Core.bitwise_or(mask, yellowMask, mask);
+
+        //Convert to do bitwise
+        Imgproc.cvtColor( mask,mask, Imgproc.COLOR_GRAY2BGR);
+        Imgproc.cvtColor( hsv,Image, Imgproc.COLOR_HSV2BGR);
+        Core.bitwise_and(mask, Image , Image);
+
+        // Do contour
+        Mat cannyOutput = new Mat();
+        Imgproc.Canny(Image, cannyOutput, 100, 100 * 2);
+        List<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(cannyOutput, contours,hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
+
+        Collections.sort(contours, new Comparator<MatOfPoint>() {
+            @Override
+            public int compare(MatOfPoint o1, MatOfPoint o2) {
+                long sumMop1 = 0;
+                long sumMop2 = 0;
+                for( Point p: o1.toList() ){
+                    sumMop1 += p.x + p.y;
+                }
+                for( Point p: o2.toList() ){
+                    sumMop2 += p.x + p.y;
+                }
+                if( sumMop1 > sumMop2)
+                    return 1;
+                else if( sumMop1 < sumMop2 )
+                    return -1;
+                else
+                    return 0;
+            }
+
+        });
+
+        //Set boundarys
+        Rect boundRect;
+        if(contours.size()>=1) {
+            boundRect = Imgproc.boundingRect((MatOfPoint) contours.get(contours.size() - 1));
+            Imgproc.rectangle( mRgba, boundRect.tl(), boundRect.br(), new Scalar(255,255,255), 2, Imgproc.LINE_AA, 0 );
+        }
+
+        flag=true;
+        return mRgba;
+    }
 
 
-        Core.inRange(imgHSV, sc1, sc2, imgThresholded);
-        return imgThresholded;
+    private Scalar converScalarHsv2Rgba(Scalar hsvColor) {
+        Mat pointMatRgba = new Mat();
+        Mat pointMatHsv = new Mat(1, 1, CV_8UC3, hsvColor);
+        Imgproc.cvtColor(pointMatHsv, pointMatRgba, Imgproc.COLOR_HSV2RGB_FULL, 4);
+
+        return new Scalar(pointMatRgba.get(0, 0));
     }
 }
