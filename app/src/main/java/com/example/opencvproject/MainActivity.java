@@ -48,14 +48,7 @@ import static org.opencv.imgproc.Imgproc.floodFill;
 public class MainActivity extends Activity implements  CvCameraViewListener2 {
     private static final String  TAG              = "MainActivity";
 
-    private boolean              mIsColorSelected = false;
     private Mat                  mRgba;
-    private Scalar               mBlobColorRgba;
-    private Scalar               mBlobColorHsv;
-    private ColorBlobDetector    mDetector;
-    private Mat                  mSpectrum;
-    private Size                 SPECTRUM_SIZE;
-    private Scalar               CONTOUR_COLOR;
     private boolean flag;
 
     Scalar redLow1;
@@ -155,12 +148,6 @@ public class MainActivity extends Activity implements  CvCameraViewListener2 {
 
     public void onCameraViewStarted(int width, int height) {
         mRgba = new Mat(height, width, CvType.CV_8UC4);
-        mDetector = new ColorBlobDetector();
-        mSpectrum = new Mat();
-        mBlobColorRgba = new Scalar(255);
-        mBlobColorHsv = new Scalar(255);
-        SPECTRUM_SIZE = new Size(200, 64);
-        CONTOUR_COLOR = new Scalar(255,255,255,255);
     }
 
     public void onCameraViewStopped() {
