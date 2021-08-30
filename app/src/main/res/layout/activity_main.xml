@@ -35,16 +35,26 @@
         app:autoSizeTextType="uniform" />
 
     <Button
-       android:id="@+id/take_photo_btn"
-        android:layout_width="77dp"
-        android:layout_height="match_parent"
+        android:id="@+id/take_photo_btn"
+        android:layout_width="75dp"
+        android:layout_height="297dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
-        android:layout_marginTop="0dp"
-        android:layout_marginEnd="-2dp"
+        android:layout_marginTop="114dp"
+        android:layout_marginEnd="0dp"
         android:layout_marginBottom="0dp"
         android:text="Button" />
+
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="-2dp"
+        app:srcCompat="@drawable/ic_launcher_foreground" />
 
 
 </RelativeLayout>

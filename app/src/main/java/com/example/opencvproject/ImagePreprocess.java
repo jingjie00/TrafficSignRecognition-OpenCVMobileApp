@@ -123,6 +123,8 @@ public class ImagePreprocess{
             boundRect = Imgproc.boundingRect((MatOfPoint) contours.get(contours.size() - 1));
             Imgproc.rectangle( input, boundRect.tl(), boundRect.br(), new Scalar(255,255,255), 2, Imgproc.LINE_AA, 0 );
         }
+
+
         return result;
     }
 

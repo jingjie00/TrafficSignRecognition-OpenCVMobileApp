@@ -24,6 +24,7 @@ import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
+import android.media.ThumbnailUtils;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -31,6 +32,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.view.SurfaceView;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,6 +51,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
     TextView textView;
     Button capture;
+    ImageView imageView;
     private Mat mRgba, currentCapture = null;
     private GtsrbClassifier gtsrbClassifier;
     private CameraBridgeViewBase mOpenCvCameraView;
@@ -97,6 +100,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
         textView = findViewById(R.id.textView);
         capture = findViewById(R.id.take_photo_btn);
+        imageView = findViewById(R.id.imageView);
+
 
         textView.setText("Hello");
         capture.bringToFront();
@@ -105,25 +110,46 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         capture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Bitmap bmp = null;
-
                 if (currentCapture == null)
                     return;
 
                 Log.d("tmp", currentCapture.height() + " | " + currentCapture.width());
                 try {
-                    Utils.matToBitmap(currentCapture, bmp);
-                    List<Classification> recognitions = gtsrbClassifier.recognizeImage(bmp);
-                    textView.setText(recognitions.toString());
+                    Bitmap bmp = convertMatToBitMap(currentCapture);
+                    //imageView.setImageBitmap( convertMatToBitMap(currentCapture));
+                    //imageView.invalidate();
+                    Log.d("Exception", "hre");
+                    Bitmap squareBitmap = ThumbnailUtils.extractThumbnail(bmp, bmp.getWidth(),bmp.getHeight());
+                    Bitmap preprocessedImage = ImageUtils.prepareImageForClassification(squareBitmap);
+                    imageView.setImageBitmap( preprocessedImage);
+                    imageView.invalidate();
+                    List<Classification> recognitions = gtsrbClassifier.recognizeImage(preprocessedImage);
+                    String a="";
+                    for (Classification b:recognitions)
+                        a=a+b;
+                    textView.setText(a);
+                    textView.invalidate();
                 } catch (Exception e) {
-                    Log.d("Exception", e.getMessage());
-                    textView.setText("Error: "+currentCapture.height()+"|" +currentCapture.width());
-
+                    Log.d("Exception", ""+e.getMessage());
                 }
-
             }
         });
 
+    }
+
+    private static Bitmap convertMatToBitMap(Mat input){
+        Bitmap bmp = null;
+        Mat rgb = new Mat();
+        Imgproc.cvtColor(input, rgb, Imgproc.COLOR_BGR2RGB);
+        Imgproc.cvtColor(rgb, rgb, Imgproc.COLOR_RGB2BGR);
+        try {
+            bmp = Bitmap.createBitmap(rgb.cols(), rgb.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(rgb, bmp);
+        }
+        catch (CvException e){
+            Log.d("Exception",e.getMessage());
+        }
+        return bmp;
     }
 
     private void loadGtsrbClassifier() {
