@@ -26,24 +26,10 @@ import static com.example.opencvproject.GtsrbModelConfig.MODEL_INPUT_SIZE;
 public class GtsrbClassifier {
     private final Interpreter interpreter;
 
-    private GtsrbClassifier(Interpreter interpreter) {
+    public GtsrbClassifier(Interpreter interpreter) {
         this.interpreter = interpreter;
     }
 
-    public static GtsrbClassifier classifier(AssetManager assetManager, String modelPath) throws IOException {
-        ByteBuffer byteBuffer = loadModelFile(assetManager, modelPath);
-        Interpreter interpreter = new Interpreter(byteBuffer);
-        return new GtsrbClassifier(interpreter);
-    }
-
-    private static ByteBuffer loadModelFile(AssetManager assetManager, String modelPath) throws IOException {
-        AssetFileDescriptor fileDescriptor = assetManager.openFd(modelPath);
-        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
-        FileChannel fileChannel = inputStream.getChannel();
-        long startOffset = fileDescriptor.getStartOffset();
-        long declaredLength = fileDescriptor.getDeclaredLength();
-        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
-    }
 
     public List<Classification> recognizeImage(Bitmap bitmap) {
         ByteBuffer byteBuffer = convertBitmapToByteBuffer(bitmap);

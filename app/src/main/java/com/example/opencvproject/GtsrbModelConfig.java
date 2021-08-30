@@ -8,7 +8,7 @@ import java.util.List;
  * The most of those information can be found in GTSRB_TensorFlow_MobileNet.ipynb
  */
 public class GtsrbModelConfig {
-    public static String MODEL_FILENAME = "gtsrb_model.lite";
+    public static String MODEL_FILENAME = "gtsrb_model.tflite";
 
     public static final int INPUT_IMG_SIZE_WIDTH = 224;
     public static final int INPUT_IMG_SIZE_HEIGHT = 224;
