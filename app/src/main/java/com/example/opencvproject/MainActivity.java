@@ -30,6 +30,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.SurfaceView;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,30 +43,30 @@ import static org.opencv.imgproc.Imgproc.floodFill;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-public class MainActivity extends Activity implements  CvCameraViewListener2 {
-    private static final String  TAG              = "MainActivity";
-    int count=0;
+public class MainActivity extends Activity implements CvCameraViewListener2 {
+    private static final String TAG = "MainActivity";
+    int count = 0;
 
     TextView textView;
-    FloatingActionButton capture;
-    private Mat mRgba, currentCapture;
+    Button capture;
+    private Mat mRgba, currentCapture = null;
     private GtsrbClassifier gtsrbClassifier;
     private CameraBridgeViewBase mOpenCvCameraView;
 
 
-    private BaseLoaderCallback  mLoaderCallback = new BaseLoaderCallback(this) {
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
             switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                {
+                case LoaderCallbackInterface.SUCCESS: {
                     Log.i(TAG, "OpenCV loaded successfully");
                     mOpenCvCameraView.enableView();
-                } break;
-                default:
-                {
+                }
+                break;
+                default: {
                     super.onManagerConnected(status);
-                } break;
+                }
+                break;
             }
         }
     };
@@ -74,7 +75,9 @@ public class MainActivity extends Activity implements  CvCameraViewListener2 {
         Log.i(TAG, "Instantiated new " + this.getClass());
     }
 
-    /** Called when the activity is first created. */
+    /**
+     * Called when the activity is first created.
+     */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Log.i(TAG, "called onCreate");
@@ -82,8 +85,8 @@ public class MainActivity extends Activity implements  CvCameraViewListener2 {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        textView=findViewById(R.id.textView);
-        capture=findViewById(R.id.take_photo_btn);
+        loadGtsrbClassifier();
+
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
@@ -91,22 +94,33 @@ public class MainActivity extends Activity implements  CvCameraViewListener2 {
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
 
-        loadGtsrbClassifier();
+
+        textView = findViewById(R.id.textView);
+        capture = findViewById(R.id.take_photo_btn);
+
+        textView.setText("Hello");
+        capture.bringToFront();
+
 
         capture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Bitmap bmp = null;
-                Mat tmp = new Mat (currentCapture.height(), currentCapture.width(), CvType.CV_8U, new Scalar(4));
+
+                if (currentCapture == null)
+                    return;
+
+                Log.d("tmp", currentCapture.height() + " | " + currentCapture.width());
                 try {
-                    //Imgproc.cvtColor(seedsImage, tmp, Imgproc.COLOR_RGB2BGRA);
-                    Imgproc.cvtColor(currentCapture, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
-                    bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
-                    Utils.matToBitmap(tmp, bmp);
+                    Utils.matToBitmap(currentCapture, bmp);
+                    List<Classification> recognitions = gtsrbClassifier.recognizeImage(bmp);
+                    textView.setText(recognitions.toString());
+                } catch (Exception e) {
+                    Log.d("Exception", e.getMessage());
+                    textView.setText("Error: "+currentCapture.height()+"|" +currentCapture.width());
+
                 }
-                catch (CvException e){Log.d("Exception",e.getMessage());}
-                List<Classification> recognitions = gtsrbClassifier.recognizeImage(bmp);
-                textView.setText(recognitions.toString());
+
             }
         });
 
@@ -114,12 +128,13 @@ public class MainActivity extends Activity implements  CvCameraViewListener2 {
 
     private void loadGtsrbClassifier() {
         try {
-            gtsrbClassifier = new GtsrbClassifier(new Interpreter(loadModelFile(this,"gtsrb_model.tflite")));
+            gtsrbClassifier = new GtsrbClassifier(new Interpreter(loadModelFile(this, "gtsrb_model.tflite")));
         } catch (IOException e) {
             Toast.makeText(this, "GTSRB model couldn't be loaded. Check logs for details.", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
     }
+
     public MappedByteBuffer loadModelFile(Activity activity, String MODEL_FILE) throws IOException {
         AssetFileDescriptor fileDescriptor = activity.getAssets().openFd(MODEL_FILE);
         FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
@@ -130,16 +145,14 @@ public class MainActivity extends Activity implements  CvCameraViewListener2 {
     }
 
     @Override
-    public void onPause()
-    {
+    public void onPause() {
         super.onPause();
         if (mOpenCvCameraView != null)
             mOpenCvCameraView.disableView();
     }
 
     @Override
-    public void onResume()
-    {
+    public void onResume() {
         super.onResume();
         if (!OpenCVLoader.initDebug()) {
             Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
@@ -158,7 +171,6 @@ public class MainActivity extends Activity implements  CvCameraViewListener2 {
     }
 
 
-
     public void onCameraViewStarted(int width, int height) {
         mRgba = new Mat(height, width, CvType.CV_8UC4);
     }
@@ -171,9 +183,9 @@ public class MainActivity extends Activity implements  CvCameraViewListener2 {
 
         Mat input = inputFrame.rgba();
         ImagePreprocess ip = new ImagePreprocess();
-        Thread thread = new Thread(){
-            public void run(){
-                currentCapture=ip.process(input);
+        Thread thread = new Thread() {
+            public void run() {
+                currentCapture = ip.process(input);
                 mRgba = input;
             }
         };
