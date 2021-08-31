@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.opencv.android.BaseLoaderCallback;
@@ -21,6 +22,7 @@ import org.opencv.imgproc.Imgproc;
 import org.tensorflow.lite.Interpreter;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
@@ -52,10 +54,11 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
     TextView textView;
     Button capture;
     ImageView imageView;
-    private Mat mRgba, currentCapture = null;
+    private Mat mRgba;
     private GtsrbClassifier gtsrbClassifier;
     private CameraBridgeViewBase mOpenCvCameraView;
-
+    Button navigate_from_file;
+    List<Mat> result= new ArrayList<>();
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -86,22 +89,24 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         Log.i(TAG, "called onCreate");
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        setContentView(R.layout.activity_from_file_recognition);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
         loadGtsrbClassifier();
 
         setContentView(R.layout.activity_main);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.cameraview);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
 
 
-        textView = findViewById(R.id.textView);
+
         capture = findViewById(R.id.take_photo_btn);
         imageView = findViewById(R.id.imageView);
-
+        textView = findViewById(R.id.textView);
 
         textView.setText("Hello");
         capture.bringToFront();
@@ -109,12 +114,22 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
         //voice output
         //export
+        navigate_from_file = findViewById(R.id.navigate_from_file);
+        navigate_from_file.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(getApplicationContext(), "Add face activity", Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(MainActivity.this, FromFileRecognitionActivity.class);
+                startActivity(intent);
+            }
+        });
+
         capture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (currentCapture == null)
+                if (result.size() == 0)
                     return;
-
+                Mat currentCapture = result.get(0);
                 Log.d("tmp", currentCapture.height() + " | " + currentCapture.width());
                 try {
                     Bitmap bmp = convertMatToBitMap(currentCapture);
@@ -213,7 +228,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         ImagePreprocess ip = new ImagePreprocess();
         Thread thread = new Thread() {
             public void run() {
-                currentCapture = ip.process(input);
+                result = ip.process(input);
                 mRgba = input;
             }
         };

@@ -1,13 +1,18 @@
 package com.example.opencvproject;
 
+import android.graphics.Bitmap;
+import android.util.Log;
 import android.widget.TextView;
 
+import org.opencv.android.Utils;
 import org.opencv.core.Core;
+import org.opencv.core.CvException;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
@@ -53,16 +58,18 @@ public class ImagePreprocess{
     }
 
 
-    public Mat process(Mat in) {
+    public List<Mat> process(Mat in) {
 
         input=in;
         Mat hsv = new Mat();
+
         Imgproc.cvtColor(input, hsv, Imgproc.COLOR_BGR2HSV);
 
         Mat		Image= new Mat(),
                 redMask1= new Mat(), redMask2= new Mat(), blueMask= new Mat(), yellowMask= new Mat(), mask= new Mat(),
-                canvas= new Mat(),
-                result=new Mat();
+                canvas= new Mat();
+
+        List<Mat> result =new ArrayList<Mat>();
 
         canvas.create(input.rows(), input.cols(), CV_8UC3);
         input.copyTo(canvas);
@@ -77,6 +84,13 @@ public class ImagePreprocess{
         // Match for Yellow
         Core.inRange(hsv, yellowLow, yellowHigh, yellowMask);
 
+        //Remove noise
+        Mat element = Imgproc.getStructuringElement(2, new Size(2*2+1, 2*2+1), new Point(2, 2) );
+        Imgproc.morphologyEx(yellowMask,yellowMask, Imgproc.MORPH_CLOSE, element);
+        Imgproc.morphologyEx(redMask1,redMask1, Imgproc.MORPH_CLOSE, element);
+        Imgproc.morphologyEx(redMask2,redMask2, Imgproc.MORPH_CLOSE, element);
+        Imgproc.morphologyEx(blueMask,blueMask, Imgproc.MORPH_CLOSE, element);
+
         //Merged
         Core.bitwise_or(redMask1, redMask2, mask);
         Core.bitwise_or(mask, blueMask, mask);
@@ -87,7 +101,7 @@ public class ImagePreprocess{
         Imgproc.cvtColor( hsv,Image, Imgproc.COLOR_HSV2BGR);
         Core.bitwise_and(mask, Image , Image);
 
-        result=Image;
+
 
         // Do contour
         Mat cannyOutput = new Mat();
@@ -124,6 +138,7 @@ public class ImagePreprocess{
             Imgproc.rectangle( input, boundRect.tl(), boundRect.br(), new Scalar(255,255,255), 2, Imgproc.LINE_AA, 0 );
         }
 
+        result.add(input);
 
         return result;
     }
@@ -134,5 +149,20 @@ public class ImagePreprocess{
         Imgproc.cvtColor(pointMatHsv, pointMatRgba, Imgproc.COLOR_HSV2RGB_FULL, 4);
 
         return new Scalar(pointMatRgba.get(0, 0));
+    }
+
+    private static Bitmap convertMatToBitMap(Mat input){
+        Bitmap bmp = null;
+        Mat rgb = new Mat();
+        Imgproc.cvtColor(input, rgb, Imgproc.COLOR_BGR2RGB);
+        Imgproc.cvtColor(rgb, rgb, Imgproc.COLOR_RGB2BGR);
+        try {
+            bmp = Bitmap.createBitmap(rgb.cols(), rgb.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(rgb, bmp);
+        }
+        catch (CvException e){
+            Log.d("Exception",e.getMessage());
+        }
+        return bmp;
     }
 }
