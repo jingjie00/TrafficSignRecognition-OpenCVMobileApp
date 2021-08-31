@@ -2,6 +2,7 @@
 <RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_from_camera_recognition"
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
@@ -24,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:orientation="vertical">
-            
+
             <org.opencv.android.JavaCameraView
                 android:id="@+id/cameraview"
                 android:layout_width="666dp"
@@ -44,15 +45,16 @@
                     android:layout_marginStart="0dp"
                     android:layout_marginTop="0dp"
                     android:background="#F9A825"
-                    android:backgroundTint="#F9A825"
-                    android:textColor="#000000" />
+                    android:textColor="#FFFFFF"
+                    android:text="File input"
+                    android:textSize="30dp"/>
                 <TextView
                     android:id="@+id/textView"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:text="TextView"
                     android:textColor="#000000"
-                    android:textSize="14sp"
+                    android:textSize="20dp"
                     app:autoSizeTextType="uniform" />
 
             </LinearLayout>
@@ -65,7 +67,10 @@
             android:id="@+id/take_photo_btn"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:text="Capture" />
+            android:background="#283593"
+            android:text="Capture"
+            android:textSize="50dp"
+            android:textColor="#FFFFFF"/>
 
     </LinearLayout>
 </RelativeLayout>
