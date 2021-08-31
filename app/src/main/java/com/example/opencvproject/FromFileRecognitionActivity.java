@@ -135,7 +135,7 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
                 if (recognitions == null)
                     return;
                 int currentItem = viewPager2.getCurrentItem();
-                textView.setText(currentItem + "/" + recognitions.size()+1 + " : " + recognitions.get(currentItem));
+                textView.setText((currentItem+1) + "/" + recognitions.size() + " : " + recognitions.get(currentItem));
                 textView.invalidate();
             }
         });
