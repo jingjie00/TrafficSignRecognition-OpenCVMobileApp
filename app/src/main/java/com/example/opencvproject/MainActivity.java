@@ -107,6 +107,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         capture.bringToFront();
 
 
+        //voice output
+        //export
         capture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
