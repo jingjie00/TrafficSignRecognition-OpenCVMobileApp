@@ -47,35 +47,15 @@ import static org.opencv.imgproc.Imgproc.floodFill;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-public class MainActivity extends Activity implements CvCameraViewListener2 {
+public class MainActivity extends Activity{
     private static final String TAG = "MainActivity";
     int count = 0;
 
-    TextView textView;
-    Button capture;
-    ImageView imageView;
-    private Mat mRgba;
-    private GtsrbClassifier gtsrbClassifier;
-    private CameraBridgeViewBase mOpenCvCameraView;
     Button navigate_from_file;
+    Button navigate_from_camera;
     List<Mat> result= new ArrayList<>();
 
-    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS: {
-                    Log.i(TAG, "OpenCV loaded successfully");
-                    mOpenCvCameraView.enableView();
-                }
-                break;
-                default: {
-                    super.onManagerConnected(status);
-                }
-                break;
-            }
-        }
-    };
+
 
     public MainActivity() {
         Log.i(TAG, "Instantiated new " + this.getClass());
@@ -89,32 +69,17 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         Log.i(TAG, "called onCreate");
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        setContentView(R.layout.activity_from_file_recognition);
+        setContentView(R.layout.activity_main);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-
-        loadGtsrbClassifier();
-
         setContentView(R.layout.activity_main);
 
-        mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.cameraview);
-        mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
-        mOpenCvCameraView.setCvCameraViewListener(this);
-
-
-
-        capture = findViewById(R.id.take_photo_btn);
-        imageView = findViewById(R.id.imageView);
-        textView = findViewById(R.id.textView);
-
-        textView.setText("Hello");
-        capture.bringToFront();
 
 
         //voice output
         //export
-        navigate_from_file = findViewById(R.id.navigate_from_file);
+        navigate_from_file = findViewById(R.id.from_file);
         navigate_from_file.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -124,116 +89,20 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
             }
         });
 
-        capture.setOnClickListener(new View.OnClickListener() {
+        navigate_from_camera = findViewById(R.id.from_camera);
+        navigate_from_camera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (result.size() == 0)
-                    return;
-                Mat currentCapture = result.get(0);
-                Log.d("tmp", currentCapture.height() + " | " + currentCapture.width());
-                try {
-                    Bitmap bmp = convertMatToBitMap(currentCapture);
-                    //imageView.setImageBitmap( convertMatToBitMap(currentCapture));
-                    //imageView.invalidate();
-                    Log.d("Exception", "hre");
-                    Bitmap squareBitmap = ThumbnailUtils.extractThumbnail(bmp, bmp.getWidth(),bmp.getHeight());
-                    Bitmap preprocessedImage = ImageUtils.prepareImageForClassification(squareBitmap);
-                    imageView.setImageBitmap( preprocessedImage);
-                    imageView.invalidate();
-                    List<Classification> recognitions = gtsrbClassifier.recognizeImage(preprocessedImage);
-                    String a="";
-                    for (Classification b:recognitions)
-                        a=a+b;
-                    textView.setText(a);
-                    textView.invalidate();
-                } catch (Exception e) {
-                    Log.d("Exception", ""+e.getMessage());
-                }
+                Toast.makeText(getApplicationContext(), "Add face activity", Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(MainActivity.this, FromCameraRecognitionActivity.class);
+                startActivity(intent);
             }
         });
 
-    }
 
-    private static Bitmap convertMatToBitMap(Mat input){
-        Bitmap bmp = null;
-        Mat rgb = new Mat();
-        Imgproc.cvtColor(input, rgb, Imgproc.COLOR_BGR2RGB);
-        Imgproc.cvtColor(rgb, rgb, Imgproc.COLOR_RGB2BGR);
-        try {
-            bmp = Bitmap.createBitmap(rgb.cols(), rgb.rows(), Bitmap.Config.ARGB_8888);
-            Utils.matToBitmap(rgb, bmp);
-        }
-        catch (CvException e){
-            Log.d("Exception",e.getMessage());
-        }
-        return bmp;
-    }
 
-    private void loadGtsrbClassifier() {
-        try {
-            gtsrbClassifier = new GtsrbClassifier(new Interpreter(loadModelFile(this, "gtsrb_model.tflite")));
-        } catch (IOException e) {
-            Toast.makeText(this, "GTSRB model couldn't be loaded. Check logs for details.", Toast.LENGTH_SHORT).show();
-            e.printStackTrace();
-        }
-    }
-
-    public MappedByteBuffer loadModelFile(Activity activity, String MODEL_FILE) throws IOException {
-        AssetFileDescriptor fileDescriptor = activity.getAssets().openFd(MODEL_FILE);
-        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
-        FileChannel fileChannel = inputStream.getChannel();
-        long startOffset = fileDescriptor.getStartOffset();
-        long declaredLength = fileDescriptor.getDeclaredLength();
-        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        if (mOpenCvCameraView != null)
-            mOpenCvCameraView.disableView();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (!OpenCVLoader.initDebug()) {
-            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
-        } else {
-            Log.d(TAG, "OpenCV library found inside package. Using it!");
-            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
-        }
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (mOpenCvCameraView != null)
-            mOpenCvCameraView.disableView();
     }
 
 
-    public void onCameraViewStarted(int width, int height) {
-        mRgba = new Mat(height, width, CvType.CV_8UC4);
-    }
-
-    public void onCameraViewStopped() {
-        mRgba.release();
-    }
-
-    public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-
-        Mat input = inputFrame.rgba();
-        ImagePreprocess ip = new ImagePreprocess();
-        Thread thread = new Thread() {
-            public void run() {
-                result = ip.process(input);
-                mRgba = input;
-            }
-        };
-        thread.run();
-        return mRgba;
-    }
 
 }

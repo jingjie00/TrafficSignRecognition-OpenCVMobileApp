@@ -1,5 +1,6 @@
 package com.example.opencvproject;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
@@ -7,6 +8,9 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.AssetFileDescriptor;
@@ -17,6 +21,7 @@ import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.DragEvent;
@@ -34,13 +39,17 @@ import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
 import org.tensorflow.lite.Interpreter;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class FromFileRecognitionActivity extends AppCompatActivity {
@@ -116,8 +125,10 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
 
         Log.d("Test", segment.size() + "|");
         List<String> recognitions = new ArrayList<String>();
+        List<Bitmap> bsegments=new ArrayList<Bitmap>();
         for (Mat s : segment) {
             Bitmap bmp = convertMatToBitMap(s);
+            bsegments.add(bmp);
             Bitmap squareBitmap = ThumbnailUtils.extractThumbnail(bmp, bmp.getWidth(), bmp.getHeight());
             Bitmap preprocessedImage = ImageUtils.prepareImageForClassification(squareBitmap);
             List<Classification> r = gtsrbClassifier.recognizeImage(preprocessedImage);
@@ -140,6 +151,54 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
             }
         });
 
+        export.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String time = (new Date()).getTime()+"";
+                for(int i=0;i<bsegments.size();i++)
+                {
+                    try {
+                        saveImage(bsegments.get(i),recognitions.get(i),time);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    Toast.makeText(getApplicationContext(),"Successfully saved", Toast.LENGTH_LONG);
+                }
+            }
+        });
+
+    }
+
+    private void saveImage(Bitmap bitmap, @NonNull String name, String time) throws IOException {
+        boolean saved;
+        OutputStream fos;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContentResolver resolver = getContentResolver();
+            ContentValues contentValues = new ContentValues();
+            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+            contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "image/png");
+            contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, "DCIM/openCVExport_" + time);
+            Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
+            fos = resolver.openOutputStream(imageUri);
+        } else {
+            String imagesDir = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DCIM).toString() + File.separator + "openCVExport_"+time;
+
+            File file = new File(imagesDir);
+
+            if (!file.exists()) {
+                file.mkdir();
+            }
+
+            File image = new File(imagesDir, name + ".png");
+            fos = new FileOutputStream(image);
+
+        }
+
+        saved = bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+        fos.flush();
+        fos.close();
     }
 
     public void loadGtsrbClassifier() {
