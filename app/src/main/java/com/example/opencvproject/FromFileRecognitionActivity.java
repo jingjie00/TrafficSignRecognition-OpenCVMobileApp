@@ -127,7 +127,8 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
         List<Mat> segment = ip.process(mat);
 
         if(segment.size()==0) {
-            Toast.makeText(getApplicationContext(),"No traffic sign found", Toast.LENGTH_LONG);
+            Toast.makeText(getBaseContext(),"No traffic sign found", Toast.LENGTH_LONG);
+            textView.setText("No traffic sign.");
             return;
         }
 
@@ -165,6 +166,10 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 String time = (new Date()).getTime()+"";
+                if(bsegments.size()==0) {
+                    Toast.makeText(getApplicationContext(), "No traffic sign", Toast.LENGTH_SHORT);
+                    textView.setText("No traffic sign!!!");
+                }
                 for(int i=0;i<bsegments.size();i++)
                 {
                     try {
@@ -172,7 +177,7 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    Toast.makeText(getApplicationContext(),"Successfully saved", Toast.LENGTH_LONG);
+                    Toast.makeText(getApplicationContext(),"Successfully saved", Toast.LENGTH_SHORT);
                 }
             }
         });
