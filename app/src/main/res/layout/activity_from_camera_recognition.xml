@@ -68,8 +68,8 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="#283593"
-            android:text="Capture"
-            android:textSize="50dp"
+            android:text="Output"
+            android:textSize="60dp"
             android:textColor="#FFFFFF"/>
 
     </LinearLayout>

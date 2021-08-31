@@ -33,6 +33,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
@@ -53,7 +56,9 @@ import java.util.Date;
 import java.util.List;
 
 public class FromFileRecognitionActivity extends AppCompatActivity {
+    private static final String TAG = "FromFiles";
     private static final int RESULT_LOAD_IMAGE = 1;
+
     Button fromfile;
     Button export;
     TextView textView;
@@ -120,6 +125,11 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
 
         ImagePreprocess ip = new ImagePreprocess();
         List<Mat> segment = ip.process(mat);
+
+        if(segment.size()==0) {
+            Toast.makeText(getApplicationContext(),"No traffic sign found", Toast.LENGTH_LONG);
+            return;
+        }
 
         viewPager2.setAdapter(new SliderAdapter(segment, getApplicationContext()));
 
@@ -232,6 +242,33 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
             Log.d("Exception", e.getMessage());
         }
         return bmp;
+    }
+
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS: {
+                }
+                break;
+                default: {
+                    super.onManagerConnected(status);
+                }
+                break;
+            }
+        }
+    };
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (!OpenCVLoader.initDebug()) {
+            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+        } else {
+            Log.d(TAG, "OpenCV library found inside package. Using it!");
+            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
     }
 
 
