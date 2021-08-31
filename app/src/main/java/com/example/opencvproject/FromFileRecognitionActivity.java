@@ -1,9 +1,11 @@
 package com.example.opencvproject;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -13,6 +15,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -37,9 +40,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.List;
 
-public class FromFileRecognitionActivity extends AppCompatActivity{
+public class FromFileRecognitionActivity extends AppCompatActivity {
     private static final int RESULT_LOAD_IMAGE = 1;
     Button fromfile;
     Button export;
@@ -60,11 +64,13 @@ public class FromFileRecognitionActivity extends AppCompatActivity{
 
         loadGtsrbClassifier();
 
-        fromfile=findViewById(R.id.from_file);
-        export=findViewById(R.id.export);
-        textView=findViewById(R.id.textView);
-        input=findViewById(R.id.input);
+        fromfile = findViewById(R.id.from_file);
+        export = findViewById(R.id.export);
+        textView = findViewById(R.id.outputText);
+        input = findViewById(R.id.input);
         viewPager2 = findViewById(R.id.result);
+        textView.setText("No traffic sign");
+        textView.invalidate();
 
         fromfile.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -77,6 +83,7 @@ public class FromFileRecognitionActivity extends AppCompatActivity{
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -92,8 +99,8 @@ public class FromFileRecognitionActivity extends AppCompatActivity{
                 Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show();
                 return;
             }
-        }else {
-            Toast.makeText(this, "You haven't picked Image",Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "You haven't picked Image", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -103,25 +110,35 @@ public class FromFileRecognitionActivity extends AppCompatActivity{
 
 
         ImagePreprocess ip = new ImagePreprocess();
-        List<Mat> segment= ip.process(mat);
+        List<Mat> segment = ip.process(mat);
 
-        viewPager2.setAdapter(new SliderAdapter(segment,getApplicationContext()));
+        viewPager2.setAdapter(new SliderAdapter(segment, getApplicationContext()));
 
-        viewPager2.setOnDragListener(new View.OnDragListener() {
+        Log.d("Test", segment.size() + "|");
+        List<String> recognitions = new ArrayList<String>();
+        for (Mat s : segment) {
+            Bitmap bmp = convertMatToBitMap(s);
+            Bitmap squareBitmap = ThumbnailUtils.extractThumbnail(bmp, bmp.getWidth(), bmp.getHeight());
+            Bitmap preprocessedImage = ImageUtils.prepareImageForClassification(squareBitmap);
+            List<Classification> r = gtsrbClassifier.recognizeImage(preprocessedImage);
+            try {
+                recognitions.add(r.toString());
+            } catch (Exception e) {
+                recognitions.add("No found");
+            }
+        }
+
+        viewPager2.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
-            public boolean onDrag(View v, DragEvent event) {
-                int currentItem=viewPager2.getCurrentItem();
-                Mat mat = segment.get(currentItem);
-                Bitmap bmp=convertMatToBitMap(mat);
-                Bitmap squareBitmap = ThumbnailUtils.extractThumbnail(bmp, bmp.getWidth(),bmp.getHeight());
-                Bitmap preprocessedImage = ImageUtils.prepareImageForClassification(squareBitmap);
-                List<Classification> recognitions = gtsrbClassifier.recognizeImage(preprocessedImage);
-                textView.setText(currentItem+" : " + recognitions.toString());
-                return false;
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+                super.onPageScrolled(position, positionOffset, positionOffsetPixels);
+                if (recognitions == null)
+                    return;
+                int currentItem = viewPager2.getCurrentItem();
+                textView.setText(currentItem + "/" + recognitions.size()+1 + " : " + recognitions.get(currentItem));
+                textView.invalidate();
             }
         });
-
-
 
     }
 
@@ -144,7 +161,7 @@ public class FromFileRecognitionActivity extends AppCompatActivity{
     }
 
 
-    static Bitmap convertMatToBitMap(Mat input){
+    static Bitmap convertMatToBitMap(Mat input) {
         Bitmap bmp = null;
         Mat rgb = new Mat();
         Imgproc.cvtColor(input, rgb, Imgproc.COLOR_BGR2RGB);
@@ -152,9 +169,8 @@ public class FromFileRecognitionActivity extends AppCompatActivity{
         try {
             bmp = Bitmap.createBitmap(rgb.cols(), rgb.rows(), Bitmap.Config.ARGB_8888);
             Utils.matToBitmap(rgb, bmp);
-        }
-        catch (CvException e){
-            Log.d("Exception",e.getMessage());
+        } catch (CvException e) {
+            Log.d("Exception", e.getMessage());
         }
         return bmp;
     }

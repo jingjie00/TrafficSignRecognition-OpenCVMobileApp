@@ -104,11 +104,14 @@ public class ImagePreprocess{
 
 
         // Do contour
+        Imgproc.erode(Image,Image, element);
+        Imgproc.dilate(Image,Image, element);
         Mat cannyOutput = new Mat();
         Imgproc.Canny(Image, cannyOutput, 100, 100 * 2);
         List<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
         Imgproc.findContours(cannyOutput, contours,hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
+
 
         Collections.sort(contours, new Comparator<MatOfPoint>() {
             @Override
@@ -130,17 +133,29 @@ public class ImagePreprocess{
             }
 
         });
+        List<MatOfPoint> filter = new ArrayList<>(contours.size());
 
-        //Set boundarys
+        for (int i=0; i<contours.size();i++){
+            if(Imgproc.contourArea(contours.get(i))*6>Imgproc.contourArea(contours.get(contours.size()-1))){
+                filter.add(contours.get(i));
+            }
+        }
         Rect boundRect;
-        if(contours.size()>=1) {
-            boundRect = Imgproc.boundingRect((MatOfPoint) contours.get(contours.size() - 1));
+        for (int i=0;i< filter.size();i++){
+            Mat filledCanvasMask=new Mat(input.rows(), input.cols(),CV_8UC3,new Scalar(0,0,0));
+            Imgproc.fillConvexPoly(filledCanvasMask,filter.get(i), new Scalar(255,255,255));
+            Mat segment=Image.clone();
+            Core.bitwise_and(filledCanvasMask, segment , segment);
+            boundRect = Imgproc.boundingRect((MatOfPoint) filter.get(i));
             Imgproc.rectangle( input, boundRect.tl(), boundRect.br(), new Scalar(255,255,255), 2, Imgproc.LINE_AA, 0 );
+            Mat crop=segment.submat(boundRect);
+
+            result.add(crop);
         }
 
-        result.add(input);
-        result.add(input);
-        return result;
+        if(result.size()<=6)
+            return result;
+        return result.subList(result.size()-6,result.size()-1);
     }
 
     private Scalar converScalarHsv2Rgba(Scalar hsvColor) {
