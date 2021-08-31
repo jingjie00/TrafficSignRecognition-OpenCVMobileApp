@@ -48,7 +48,7 @@ import static org.opencv.imgproc.Imgproc.floodFill;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 public class FromCameraRecognitionActivity extends Activity implements CvCameraViewListener2 {
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "FromCamera";
     int count = 0;
 
     TextView textView;
@@ -95,8 +95,6 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
         loadGtsrbClassifier();
-
-        setContentView(R.layout.activity_main);
 
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.cameraview);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
