@@ -2,16 +2,21 @@ package com.example.opencvproject;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.viewpager2.widget.ViewPager2;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.res.AssetFileDescriptor;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.DragEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -24,18 +29,24 @@ import org.opencv.android.Utils;
 import org.opencv.core.CvException;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
+import org.tensorflow.lite.Interpreter;
 
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.List;
 
-public class FromFileRecognitionActivity extends AppCompatActivity {
+public class FromFileRecognitionActivity extends AppCompatActivity{
     private static final int RESULT_LOAD_IMAGE = 1;
     Button fromfile;
     Button export;
     TextView textView;
     ImageView input;
-    ImageView result;
+    ViewPager2 viewPager2;
+    private GtsrbClassifier gtsrbClassifier;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,12 +58,13 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         getSupportActionBar().hide();
 
+        loadGtsrbClassifier();
+
         fromfile=findViewById(R.id.from_file);
         export=findViewById(R.id.export);
         textView=findViewById(R.id.textView);
         input=findViewById(R.id.input);
-        result=findViewById(R.id.result);
-
+        viewPager2 = findViewById(R.id.result);
 
         fromfile.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -93,13 +105,46 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
         ImagePreprocess ip = new ImagePreprocess();
         List<Mat> segment= ip.process(mat);
 
-        Mat currentCapture = segment.get(0);
-        Bitmap output=convertMatToBitMap(currentCapture);
-        result.setImageBitmap(output);
+        viewPager2.setAdapter(new SliderAdapter(segment,getApplicationContext()));
+
+        viewPager2.setOnDragListener(new View.OnDragListener() {
+            @Override
+            public boolean onDrag(View v, DragEvent event) {
+                int currentItem=viewPager2.getCurrentItem();
+                Mat mat = segment.get(currentItem);
+                Bitmap bmp=convertMatToBitMap(mat);
+                Bitmap squareBitmap = ThumbnailUtils.extractThumbnail(bmp, bmp.getWidth(),bmp.getHeight());
+                Bitmap preprocessedImage = ImageUtils.prepareImageForClassification(squareBitmap);
+                List<Classification> recognitions = gtsrbClassifier.recognizeImage(preprocessedImage);
+                textView.setText(currentItem+" : " + recognitions.toString());
+                return false;
+            }
+        });
+
+
 
     }
 
-    private static Bitmap convertMatToBitMap(Mat input){
+    public void loadGtsrbClassifier() {
+        try {
+            gtsrbClassifier = new GtsrbClassifier(new Interpreter(loadModelFile(this, "gtsrb_model.tflite")));
+        } catch (IOException e) {
+            Toast.makeText(this, "GTSRB model couldn't be loaded. Check logs for details.", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
+    }
+
+    public MappedByteBuffer loadModelFile(Activity activity, String MODEL_FILE) throws IOException {
+        AssetFileDescriptor fileDescriptor = activity.getAssets().openFd(MODEL_FILE);
+        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+        FileChannel fileChannel = inputStream.getChannel();
+        long startOffset = fileDescriptor.getStartOffset();
+        long declaredLength = fileDescriptor.getDeclaredLength();
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+    }
+
+
+    static Bitmap convertMatToBitMap(Mat input){
         Bitmap bmp = null;
         Mat rgb = new Mat();
         Imgproc.cvtColor(input, rgb, Imgproc.COLOR_BGR2RGB);
@@ -113,4 +158,6 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
         }
         return bmp;
     }
+
+
 }

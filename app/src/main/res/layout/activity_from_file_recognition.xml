@@ -52,7 +52,7 @@
         app:layout_constraintTop_toBottomOf="@+id/result"
         app:layout_constraintVertical_bias="1.0" />
 
-    <ImageView
+    <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/result"
         android:layout_width="531dp"
         android:layout_height="249dp"

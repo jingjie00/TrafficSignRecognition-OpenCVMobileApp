@@ -139,7 +139,7 @@ public class ImagePreprocess{
         }
 
         result.add(input);
-
+        result.add(input);
         return result;
     }
 
