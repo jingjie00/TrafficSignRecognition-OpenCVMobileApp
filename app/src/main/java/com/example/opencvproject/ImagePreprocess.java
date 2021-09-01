@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import static org.opencv.core.CvType.CV_8UC3;
+import static org.opencv.core.CvType.CV_8U;
 
 public class ImagePreprocess{
     private Mat input;
@@ -61,9 +62,12 @@ public class ImagePreprocess{
     public List<Mat> process(Mat in) {
 
         input=in;
+        Mat temp=in.clone();
+        Imgproc.cvtColor(temp, temp, Imgproc.COLOR_RGBA2BGR);
+        Mat blur=new Mat();
+        Imgproc.bilateralFilter(temp, blur, 21, 21*3, 7);
         Mat hsv = new Mat();
-
-        Imgproc.cvtColor(input, hsv, Imgproc.COLOR_BGR2HSV);
+        Imgproc.cvtColor(blur, hsv, Imgproc.COLOR_BGR2HSV);
 
         Mat		Image= new Mat(),
                 redMask1= new Mat(), redMask2= new Mat(), blueMask= new Mat(), yellowMask= new Mat(), mask= new Mat(),
@@ -85,7 +89,7 @@ public class ImagePreprocess{
         Core.inRange(hsv, yellowLow, yellowHigh, yellowMask);
 
         //Remove noise
-        Mat element = Imgproc.getStructuringElement(2, new Size(2*2+1, 2*2+1), new Point(2, 2) );
+        Mat element = new Mat(2,2,CV_8U,new Scalar(1));
         Imgproc.morphologyEx(yellowMask,yellowMask, Imgproc.MORPH_CLOSE, element);
         Imgproc.morphologyEx(redMask1,redMask1, Imgproc.MORPH_CLOSE, element);
         Imgproc.morphologyEx(redMask2,redMask2, Imgproc.MORPH_CLOSE, element);
@@ -144,12 +148,121 @@ public class ImagePreprocess{
         for (int i=0;i< filter.size();i++){
             Mat filledCanvasMask=new Mat(input.rows(), input.cols(),CV_8UC3,new Scalar(0,0,0));
             Imgproc.fillConvexPoly(filledCanvasMask,filter.get(i), new Scalar(255,255,255));
-            Mat segment=Image.clone();
+            Mat segment= new Mat();
+            Imgproc.cvtColor( hsv,segment, Imgproc.COLOR_HSV2BGR);
             Core.bitwise_and(filledCanvasMask, segment , segment);
             boundRect = Imgproc.boundingRect((MatOfPoint) filter.get(i));
             Imgproc.rectangle( input, boundRect.tl(), boundRect.br(), new Scalar(255,255,255), 2, Imgproc.LINE_AA, 0 );
             Mat crop=segment.submat(boundRect);
+            Imgproc.cvtColor(crop,crop,Imgproc.COLOR_BGR2RGBA);
+            result.add(crop);
+        }
 
+        if(result.size()<=6)
+            return result;
+        return result.subList(result.size()-6,result.size()-1);
+    }
+
+    public List<Mat> processCamera(Mat in) {
+
+        input=in;
+        Mat temp=in.clone();
+        Imgproc.cvtColor(temp, temp, Imgproc.COLOR_RGBA2BGR);
+        Mat blur=new Mat();
+        Imgproc.bilateralFilter(temp, blur, 21, 21*3, 7);
+        Mat hsv = new Mat();
+        Imgproc.cvtColor(blur, hsv, Imgproc.COLOR_BGR2HSV);
+
+        Mat		Image= new Mat(),
+                redMask1= new Mat(), redMask2= new Mat(), blueMask= new Mat(), yellowMask= new Mat(), mask= new Mat(),
+                canvas= new Mat();
+
+        List<Mat> result =new ArrayList<Mat>();
+
+        canvas.create(input.rows(), input.cols(), CV_8UC3);
+        input.copyTo(canvas);
+
+        // Match for Red
+        Core.inRange(hsv, redLow1, redHigh1, redMask1);
+        Core.inRange(hsv, redLow2, redHigh2, redMask2);
+
+        // Match for Blue
+        Core.inRange(hsv, blueLow, blueHigh, blueMask);
+
+        // Match for Yellow
+        Core.inRange(hsv, yellowLow, yellowHigh, yellowMask);
+
+        //Remove noise
+        Mat element = new Mat(2,2,CV_8U,new Scalar(1));
+        Imgproc.morphologyEx(yellowMask,yellowMask, Imgproc.MORPH_CLOSE, element);
+        Imgproc.morphologyEx(redMask1,redMask1, Imgproc.MORPH_CLOSE, element);
+        Imgproc.morphologyEx(redMask2,redMask2, Imgproc.MORPH_CLOSE, element);
+        Imgproc.morphologyEx(blueMask,blueMask, Imgproc.MORPH_CLOSE, element);
+
+        //Merged
+        Core.bitwise_or(redMask1, redMask2, mask);
+        Core.bitwise_or(mask, blueMask, mask);
+        Core.bitwise_or(mask, yellowMask, mask);
+
+        //Convert to do bitwise
+        Imgproc.cvtColor( mask,mask, Imgproc.COLOR_GRAY2BGR);
+        Imgproc.cvtColor( hsv,Image, Imgproc.COLOR_HSV2BGR);
+        Core.bitwise_and(mask, Image , Image);
+
+
+
+        // Do contour
+        Imgproc.erode(Image,Image, element);
+        Imgproc.dilate(Image,Image, element);
+        Mat cannyOutput = new Mat();
+        Imgproc.Canny(Image, cannyOutput, 100, 100 * 2);
+        List<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(cannyOutput, contours,hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
+
+
+        Collections.sort(contours, new Comparator<MatOfPoint>() {
+            @Override
+            public int compare(MatOfPoint o1, MatOfPoint o2) {
+                long sumMop1 = 0;
+                long sumMop2 = 0;
+                for( Point p: o1.toList() ){
+                    sumMop1 += p.x + p.y;
+                }
+                for( Point p: o2.toList() ){
+                    sumMop2 += p.x + p.y;
+                }
+                if( sumMop1 > sumMop2)
+                    return 1;
+                else if( sumMop1 < sumMop2 )
+                    return -1;
+                else
+                    return 0;
+            }
+
+        });
+        List<MatOfPoint> filter = new ArrayList<>(contours.size());
+
+        for (int i=0; i<contours.size();i++){
+            if(Imgproc.contourArea(contours.get(i))*6>Imgproc.contourArea(contours.get(contours.size()-1))){
+                filter.add(contours.get(i));
+            }
+        }
+
+        if(filter.size()==0)
+            return result;
+
+        Rect boundRect;
+        for (int i=filter.size()-1;i< filter.size();i++){
+            Mat filledCanvasMask=new Mat(input.rows(), input.cols(),CV_8UC3,new Scalar(0,0,0));
+            Imgproc.fillConvexPoly(filledCanvasMask,filter.get(i), new Scalar(255,255,255));
+            Mat segment= new Mat();
+            Imgproc.cvtColor( hsv,segment, Imgproc.COLOR_HSV2BGR);
+            Core.bitwise_and(filledCanvasMask, segment , segment);
+            boundRect = Imgproc.boundingRect((MatOfPoint) filter.get(i));
+            Imgproc.rectangle( input, boundRect.tl(), boundRect.br(), new Scalar(255,255,255), 2, Imgproc.LINE_AA, 0 );
+            Mat crop=segment.submat(boundRect);
+            Imgproc.cvtColor(crop,crop,Imgproc.COLOR_BGR2RGBA);
             result.add(crop);
         }
 

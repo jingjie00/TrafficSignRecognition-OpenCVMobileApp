@@ -53,7 +53,6 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
 
     TextView textView;
     Button capture;
-    ImageView imageView;
     private Mat mRgba;
     private GtsrbClassifier gtsrbClassifier;
     private CameraBridgeViewBase mOpenCvCameraView;
@@ -136,8 +135,6 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
                     Log.d("Exception", "hre");
                     Bitmap squareBitmap = ThumbnailUtils.extractThumbnail(bmp, bmp.getWidth(),bmp.getHeight());
                     Bitmap preprocessedImage = ImageUtils.prepareImageForClassification(squareBitmap);
-                    imageView.setImageBitmap( preprocessedImage);
-                    imageView.invalidate();
                     List<Classification> recognitions = gtsrbClassifier.recognizeImage(preprocessedImage);
                     String a="";
                     for (Classification b:recognitions)
@@ -226,7 +223,7 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
         ImagePreprocess ip = new ImagePreprocess();
         Thread thread = new Thread() {
             public void run() {
-                result = ip.process(input);
+                result = ip.processCamera(input);
                 mRgba = input;
             }
         };
