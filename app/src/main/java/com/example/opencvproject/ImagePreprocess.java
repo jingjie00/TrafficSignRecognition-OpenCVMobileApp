@@ -59,7 +59,7 @@ public class ImagePreprocess{
     }
 
 
-    public List<Mat> process(Mat in) {
+    public List<Mat> processImage(Mat in) {
 
         input=in;
         Mat temp=in.clone();

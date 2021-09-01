@@ -23,6 +23,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.DragEvent;
 import android.view.View;
@@ -54,6 +55,7 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class FromFileRecognitionActivity extends AppCompatActivity {
     private static final String TAG = "FromFiles";
@@ -65,6 +67,7 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
     ImageView input;
     ViewPager2 viewPager2;
     private GtsrbClassifier gtsrbClassifier;
+    TextToSpeech tts;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,7 +98,40 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
             }
         });
 
+        tts=new TextToSpeech(FromFileRecognitionActivity.this, new TextToSpeech.OnInitListener() {
+
+            @Override
+            public void onInit(int status) {
+                // TODO Auto-generated method stub
+                if(status == TextToSpeech.SUCCESS){
+                    int result=tts.setLanguage(Locale.US);
+                    if(result==TextToSpeech.LANG_MISSING_DATA ||
+                            result==TextToSpeech.LANG_NOT_SUPPORTED){
+                        Log.e("error", "This Language is not supported");
+                    }
+                    else{
+                        tts.setLanguage(Locale.US);
+                    }
+                }
+                else
+                    Log.e("error", "Initilization Failed!");
+            }
+
+
+        });
+
+
+        textView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tts.speak(textView.getText(),TextToSpeech.QUEUE_ADD,null,"0");
+            }
+        });
+
+
+
     }
+
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -124,7 +160,7 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
 
 
         ImagePreprocess ip = new ImagePreprocess();
-        List<Mat> segment = ip.process(mat);
+        List<Mat> segment = ip.processImage(mat);
 
         if(segment.size()==0) {
             Toast.makeText(getBaseContext(),"No traffic sign found", Toast.LENGTH_LONG);

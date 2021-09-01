@@ -6,6 +6,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
@@ -28,6 +29,7 @@ import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.media.ThumbnailUtils;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -58,6 +60,7 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
     private CameraBridgeViewBase mOpenCvCameraView;
     Button navigate_from_file;
     List<Mat> result= new ArrayList<>();
+    TextToSpeech tts;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -107,6 +110,28 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
         textView.setText("Hello");
         capture.bringToFront();
 
+        tts=new TextToSpeech(FromCameraRecognitionActivity.this, new TextToSpeech.OnInitListener() {
+
+            @Override
+            public void onInit(int status) {
+                // TODO Auto-generated method stub
+                if(status == TextToSpeech.SUCCESS){
+                    int result=tts.setLanguage(Locale.US);
+                    if(result==TextToSpeech.LANG_MISSING_DATA ||
+                            result==TextToSpeech.LANG_NOT_SUPPORTED){
+                        Log.e("error", "This Language is not supported");
+                    }
+                    else{
+                        tts.setLanguage(Locale.US);
+                    }
+                }
+                else
+                    Log.e("error", "Initilization Failed!");
+            }
+
+
+        });
+
 
         //voice output
         //export
@@ -141,6 +166,7 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
                         a=a+b;
                     textView.setText(a);
                     textView.invalidate();
+                    tts.speak(textView.getText(),TextToSpeech.QUEUE_ADD,null,"0");
                 } catch (Exception e) {
                     Log.d("Exception", ""+e.getMessage());
                 }
