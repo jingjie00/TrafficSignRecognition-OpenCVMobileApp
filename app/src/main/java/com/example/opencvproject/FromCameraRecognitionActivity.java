@@ -23,6 +23,7 @@ import org.opencv.imgproc.Imgproc;
 import org.tensorflow.lite.Interpreter;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.AssetFileDescriptor;
@@ -61,6 +62,7 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
     Button navigate_from_file;
     List<Mat> result= new ArrayList<>();
     TextToSpeech tts;
+
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -133,24 +135,31 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
         });
 
 
+
+
         //voice output
         //export
         navigate_from_file = findViewById(R.id.navigate_from_file);
         navigate_from_file.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(getApplicationContext(), "Add face activity", Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(FromCameraRecognitionActivity.this, FromFileRecognitionActivity.class);
                 startActivity(intent);
                 finish();
+
             }
         });
 
         capture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (result.size() == 0)
+                if (result.size() == 0){
+                    textView.setText("No valid traffic sign");
+                    textView.invalidate();
+                    tts.speak("No valid traffic sign",TextToSpeech.QUEUE_ADD,null,"0");
                     return;
+                }
+
                 Mat currentCapture = result.get(0);
                 Log.d("tmp", currentCapture.height() + " | " + currentCapture.width());
                 try {
@@ -169,6 +178,7 @@ public class FromCameraRecognitionActivity extends Activity implements CvCameraV
                     tts.speak(textView.getText(),TextToSpeech.QUEUE_ADD,null,"0");
                 } catch (Exception e) {
                     Log.d("Exception", ""+e.getMessage());
+                    tts.speak("No valid traffic sign",TextToSpeech.QUEUE_ADD,null,"0");
                 }
             }
         });

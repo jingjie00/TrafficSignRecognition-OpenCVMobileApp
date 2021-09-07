@@ -8,6 +8,7 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -68,6 +69,9 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
     ViewPager2 viewPager2;
     private GtsrbClassifier gtsrbClassifier;
     TextToSpeech tts;
+    List<String> recognitions;
+    List<String> voices;
+    List<Bitmap> bsegments;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +92,11 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
         viewPager2 = findViewById(R.id.result);
         textView.setText("No traffic sign");
         textView.invalidate();
+
+
+        recognitions = new ArrayList<String>();
+        voices=new ArrayList<String>();
+        bsegments=new ArrayList<Bitmap>();
 
         fromfile.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -124,7 +133,11 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
         textView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                tts.speak(textView.getText(),TextToSpeech.QUEUE_ADD,null,"0");
+                int currentItem = viewPager2.getCurrentItem();
+                if(voices.size()==0)
+                    tts.speak("No traffic sign.",TextToSpeech.QUEUE_ADD,null,"0");
+                else
+                    tts.speak("("+(currentItem+1)+"/) "+voices.get(currentItem),TextToSpeech.QUEUE_ADD,null,"0");
             }
         });
 
@@ -138,7 +151,9 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         Bitmap selectedImage;
+
         if (resultCode == RESULT_OK) {
+
             try {
                 final Uri imageUri = data.getData();
                 final InputStream imageStream = getContentResolver().openInputStream(imageUri);
@@ -170,19 +185,31 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
 
         viewPager2.setAdapter(new SliderAdapter(segment, getApplicationContext()));
 
-        Log.d("Test", segment.size() + "|");
-        List<String> recognitions = new ArrayList<String>();
-        List<Bitmap> bsegments=new ArrayList<Bitmap>();
+        recognitions = new ArrayList<String>();
+        voices=new ArrayList<String>();
+        bsegments=new ArrayList<Bitmap>();
         for (Mat s : segment) {
             Bitmap bmp = convertMatToBitMap(s);
             bsegments.add(bmp);
             Bitmap squareBitmap = ThumbnailUtils.extractThumbnail(bmp, bmp.getWidth(), bmp.getHeight());
             Bitmap preprocessedImage = ImageUtils.prepareImageForClassification(squareBitmap);
             List<Classification> r = gtsrbClassifier.recognizeImage(preprocessedImage);
-            try {
-                recognitions.add(r.toString());
-            } catch (Exception e) {
-                recognitions.add("No found");
+            if(r.size()==0){
+                recognitions.add("Not valid traffic sign");
+                voices.add("Not valid traffic sign");
+            }else {
+
+                try {
+                    recognitions.add(r.toString());
+                    String temp = r.toString();
+                    String arr[] = temp.split(" ", 2);
+                    temp = arr[0].replace("_", " ");
+                    temp = temp.replace("[", "");
+                    voices.add(temp);
+                } catch (Exception e) {
+                    recognitions.add("Not valid traffic sign");
+                    voices.add("Not valid traffic sign");
+                }
             }
         }
 
@@ -209,7 +236,7 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
                 for(int i=0;i<bsegments.size();i++)
                 {
                     try {
-                        saveImage(bsegments.get(i),recognitions.get(i),time);
+                        saveImage(bsegments.get(i),voices.get(i),time);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -217,7 +244,6 @@ public class FromFileRecognitionActivity extends AppCompatActivity {
                 }
             }
         });
-
     }
 
     private void saveImage(Bitmap bitmap, @NonNull String name, String time) throws IOException {

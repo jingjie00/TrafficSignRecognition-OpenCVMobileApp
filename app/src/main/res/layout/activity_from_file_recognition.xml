@@ -6,10 +6,21 @@
     android:layout_height="match_parent"
     tools:context=".FromFileRecognitionActivity">
 
-
+    <ProgressBar
+        android:id="@+id/progress_loader"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@+id/linearLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 
     <LinearLayout
+        android:id="@+id/linearLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="horizontal"
@@ -40,6 +51,7 @@
             android:layout_width="470dp"
             android:layout_height="match_parent"
             android:orientation="vertical">
+
             <androidx.viewpager2.widget.ViewPager2
                 android:id="@+id/result"
                 android:layout_width="478dp"
@@ -74,10 +86,10 @@
                     android:layout_height="199dp"
                     android:layout_alignParentTop="true"
                     android:layout_alignParentEnd="true"
+                    android:layout_marginStart="10dp"
                     android:layout_marginTop="0dp"
                     android:layout_marginEnd="0dp"
                     android:layout_marginBottom="0dp"
-                    android:layout_marginStart="10dp"
                     android:gravity="left"
                     android:text="The text output will show here. This is scrollable. Touch to repeat the voice result output again!"
                     android:textColor="@color/black"
