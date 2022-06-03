@@ -1,0 +1,10 @@
+Input Dataset/028_1_0114.png
+Input Dataset/017_0006.png
+Input Dataset/037_0002.png
+Input Dataset/054_1_0010.png
+Input Dataset/055_1_0039.png
+Input Dataset/031_1_0009.png
+Input Dataset/000_1_0048.png
+Input Dataset/017_0099.png
+Input Dataset/037_02_0001.png
+Input Dataset/000_0021.png
