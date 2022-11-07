@@ -42,7 +42,7 @@ The developed mobile application can be run in Android Studio using the steps gi
 14. Compile the program to APK and run in virtual machine or phone. The sample APK is provided which name: "mobileapplication.apk"
 
 15. For easy setup just clone our github respository:
-https://github.com/jjtan00/TrafficSignRecognitionOpenCV.git
+https://github.com/jingjie00/TrafficSignRecognitionOpenCV.git
 
 16. Any issue please contact 
 
